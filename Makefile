@@ -1,8 +1,10 @@
 # Run from the repository root. `make help` lists targets.
 .DEFAULT_GOAL := help
-.PHONY: help web-install web-build db-up db-down db-reset dev dev-web test check build clean
+.PHONY: help web-install web-build db-up db-down db-reset migrate dev dev-web test check build clean
 
 COMPOSE := docker compose -f deploy/compose.yaml
+# Matches deploy/compose.yaml; development only.
+export AMETHYST_DATABASE_URL ?= postgres://amethyst:amethyst@localhost:5432/amethyst?sslmode=disable
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -25,8 +27,11 @@ db-down: ## Stop local dependencies (data is kept)
 db-reset: ## Stop local dependencies and delete their data
 	$(COMPOSE) down --volumes
 
-dev: web-build ## Run the Go server on :8080, serving the built frontend
-	cd server && AMETHYST_WEB_DIR=../web/dist go run ./cmd/amethyst
+migrate: db-up ## Apply pending database migrations
+	cd server && go run ./cmd/amethyst migrate
+
+dev: web-build migrate ## Run the Go server on :8080, serving the built frontend
+	cd server && AMETHYST_WEB_DIR=../web/dist go run ./cmd/amethyst serve
 
 dev-web: web/node_modules ## Run the Vite dev server on :5173 (hot reload; proxies /api to :8080)
 	cd web && npm run dev
