@@ -1,0 +1,30 @@
+# Local development dependencies. Start with `make db-up` from the repository root.
+name: amethyst
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      # Development-only credentials; never reused outside this machine.
+      POSTGRES_USER: amethyst
+      POSTGRES_PASSWORD: amethyst
+      POSTGRES_DB: amethyst
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amethyst -d amethyst"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  mailpit:
+    # Captures all outgoing mail; view it at http://localhost:8025.
+    image: axllent/mailpit:v1.31
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+volumes:
+  postgres-data:

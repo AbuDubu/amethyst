@@ -1,6 +1,8 @@
 # Run from the repository root. `make help` lists targets.
 .DEFAULT_GOAL := help
-.PHONY: help web-install web-build dev dev-web test check build clean
+.PHONY: help web-install web-build db-up db-down db-reset dev dev-web test check build clean
+
+COMPOSE := docker compose -f deploy/compose.yaml
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -13,6 +15,15 @@ web-install: web/node_modules ## Install frontend dependencies
 
 web-build: web/node_modules ## Build the frontend into web/dist
 	cd web && npm run build
+
+db-up: ## Start PostgreSQL and Mailpit (waits until healthy)
+	$(COMPOSE) up -d --wait
+
+db-down: ## Stop local dependencies (data is kept)
+	$(COMPOSE) down
+
+db-reset: ## Stop local dependencies and delete their data
+	$(COMPOSE) down --volumes
 
 dev: web-build ## Run the Go server on :8080, serving the built frontend
 	cd server && AMETHYST_WEB_DIR=../web/dist go run ./cmd/amethyst
