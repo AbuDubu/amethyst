@@ -69,3 +69,14 @@ func (m *Migrator) CheckCurrent(ctx context.Context) error {
 	}
 	return nil
 }
+
+// Ready returns a readiness check: the database answers and its schema is
+// current. It is called on every probe, so it only does cheap queries.
+func Ready(pool *pgxpool.Pool, m *Migrator) func(context.Context) error {
+	return func(ctx context.Context) error {
+		if err := pool.Ping(ctx); err != nil {
+			return fmt.Errorf("ping database: %w", err)
+		}
+		return m.CheckCurrent(ctx)
+	}
+}

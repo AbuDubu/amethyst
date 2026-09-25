@@ -83,7 +83,22 @@ func serve(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
-	handler, err := httpserver.New(os.DirFS(cfg.WebDir))
+	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	migrator, err := db.NewMigrator(pool)
+	if err != nil {
+		return err
+	}
+	// Serve anyway: readiness stays failing until an operator migrates, which
+	// is visible to probes instead of a crash loop.
+	if err := migrator.CheckCurrent(ctx); err != nil {
+		logger.Warn("database schema is not current", "error", err)
+	}
+
+	handler, err := httpserver.New(os.DirFS(cfg.WebDir), db.Ready(pool, migrator), logger)
 	if err != nil {
 		return err
 	}
