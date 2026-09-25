@@ -1,7 +1,11 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,11 +17,16 @@ const indexHTML = `<!doctype html><div id="root"></div>`
 
 func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
+	return newTestHandlerWithReadiness(t, func(context.Context) error { return nil })
+}
+
+func newTestHandlerWithReadiness(t *testing.T, ready ReadinessCheck) http.Handler {
+	t.Helper()
 	web := fstest.MapFS{
 		"index.html":    {Data: []byte(indexHTML)},
 		"assets/app.js": {Data: []byte("console.log('app')")},
 	}
-	h, err := New(web)
+	h, err := New(web, ready, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -42,6 +51,43 @@ func TestHealthz(t *testing.T) {
 	}
 	if body["status"] != "ok" {
 		t.Errorf("status field = %q, want ok", body["status"])
+	}
+}
+
+func TestReadyzWhenDependenciesAreReady(t *testing.T) {
+	rec := get(newTestHandler(t), http.MethodGet, "/api/readyz")
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200", rec.Code)
+	}
+}
+
+func TestReadyzFailsButHealthzPassesWhenDatabaseIsDown(t *testing.T) {
+	h := newTestHandlerWithReadiness(t, func(context.Context) error {
+		return errors.New("dial tcp 10.0.0.5:5432: connection refused")
+	})
+
+	ready := get(h, http.MethodGet, "/api/readyz")
+	if ready.Code != http.StatusServiceUnavailable {
+		t.Errorf("readyz status = %d, want 503", ready.Code)
+	}
+	if strings.Contains(ready.Body.String(), "10.0.0.5") {
+		t.Error("readyz response leaked the internal error")
+	}
+
+	if live := get(h, http.MethodGet, "/api/healthz"); live.Code != http.StatusOK {
+		t.Errorf("healthz status = %d, want 200 (liveness must not depend on the database)", live.Code)
+	}
+}
+
+func TestReadyzGivesUpOnAHungDependency(t *testing.T) {
+	h := newTestHandlerWithReadiness(t, func(ctx context.Context) error {
+		<-ctx.Done() // Simulates a dependency that never answers.
+		return ctx.Err()
+	})
+
+	if rec := get(h, http.MethodGet, "/api/readyz"); rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want 503", rec.Code)
 	}
 }
 
@@ -106,7 +152,7 @@ func TestNonGETToFrontendIsRejected(t *testing.T) {
 }
 
 func TestNewFailsWithoutFrontendBuild(t *testing.T) {
-	_, err := New(fstest.MapFS{})
+	_, err := New(fstest.MapFS{}, func(context.Context) error { return nil }, slog.Default())
 
 	if err == nil {
 		t.Fatal("New succeeded without index.html, want error")

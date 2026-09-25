@@ -46,3 +46,41 @@ func TestUpIsIdempotent(t *testing.T) {
 		t.Errorf("Up on a migrated database applied %v, want nothing", applied)
 	}
 }
+
+func TestReady(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("migrated database is ready", func(t *testing.T) {
+		pool := dbtest.New(t)
+		m, err := db.NewMigrator(pool)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Ready(pool, m)(ctx); err != nil {
+			t.Errorf("Ready = %v, want nil", err)
+		}
+	})
+
+	t.Run("unmigrated database is not ready", func(t *testing.T) {
+		pool := dbtest.NewEmpty(t)
+		m, err := db.NewMigrator(pool)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Ready(pool, m)(ctx); !errors.Is(err, db.ErrMigrationsPending) {
+			t.Errorf("Ready = %v, want ErrMigrationsPending", err)
+		}
+	})
+
+	t.Run("unreachable database is not ready", func(t *testing.T) {
+		pool := dbtest.New(t)
+		m, err := db.NewMigrator(pool)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pool.Close() // Every later query fails, as during an outage.
+		if err := db.Ready(pool, m)(ctx); err == nil {
+			t.Error("Ready = nil after the pool closed, want error")
+		}
+	})
+}
