@@ -1,0 +1,27 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Go
+/server/bin/
+*.test
+*.out
+coverage.*
+
+# Web
+node_modules/
+/web/dist/
+/web/coverage/
+/web/test-results/
+/web/playwright-report/
+
+# Local runtime data
+/deploy/data/
+*.mhtml
