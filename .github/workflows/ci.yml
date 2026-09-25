@@ -17,6 +17,21 @@ jobs:
   # with the branch protection settings.
   server:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: amethyst
+          POSTGRES_PASSWORD: amethyst
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U amethyst"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      AMETHYST_TEST_DATABASE_URL: postgres://amethyst:amethyst@localhost:5432/postgres?sslmode=disable
     defaults:
       run:
         working-directory: server
