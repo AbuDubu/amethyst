@@ -5,6 +5,8 @@
 COMPOSE := docker compose -f deploy/compose.yaml
 # Matches deploy/compose.yaml; development only.
 export AMETHYST_DATABASE_URL ?= postgres://amethyst:amethyst@localhost:5432/amethyst?sslmode=disable
+# Admin connection used by tests to create a throwaway database per test.
+export AMETHYST_TEST_DATABASE_URL ?= postgres://amethyst:amethyst@localhost:5432/postgres?sslmode=disable
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -36,11 +38,11 @@ dev: web-build migrate ## Run the Go server on :8080, serving the built frontend
 dev-web: web/node_modules ## Run the Vite dev server on :5173 (hot reload; proxies /api to :8080)
 	cd web && npm run dev
 
-test: web/node_modules ## Run Go and frontend tests
+test: web/node_modules db-up ## Run Go and frontend tests
 	cd server && go test -race ./...
 	cd web && npm test
 
-check: web/node_modules ## Run every CI check locally
+check: web/node_modules db-up ## Run every CI check locally
 	@cd server && test -z "$$(gofmt -l .)" || (echo "gofmt needed:"; gofmt -l .; exit 1)
 	cd server && go vet ./...
 	cd server && go tool staticcheck ./...
