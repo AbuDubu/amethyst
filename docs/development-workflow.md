@@ -54,7 +54,7 @@ Important agreed product rules that these tests must cover include current host 
 - Labels: `type:feature`, `type:bug`, `type:chore`, `type:docs`, `area:server`, `area:web`, `area:federation`, `area:infra`.
 - Branches are named `<issue#>-short-slug`. Commit subjects are imperative and reference the issue.
 - `main` is protected: pull requests and passing required checks, no force pushes. Pull requests merge by rebase so each small commit is preserved; squash and merge commits are disabled.
-- Required CI jobs for Milestone 0: **server** (gofmt, go vet, staticcheck, `go test` against PostgreSQL), **web** (tsc, eslint, vitest, Vite build), and **contract** (regenerate OpenAPI and sqlc output; fail on any difference). Browser-journey and two-server federation jobs become required in the milestones that introduce them. Deployment jobs wait for a VPS provider.
+- Required CI jobs for Milestone 0: **server** (gofmt, go vet, staticcheck, `go test` against PostgreSQL), **web** (tsc, oxlint, vitest, Vite build), and **contract** (regenerate OpenAPI and sqlc output; fail on any difference). Browser-journey and two-server federation jobs become required in the milestones that introduce them. Deployment jobs wait for a VPS provider.
 
 ## Environment questions still open
 
