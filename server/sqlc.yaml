@@ -1,0 +1,19 @@
+# Generates typed Go query methods from explicit SQL. Run `make generate`.
+# Each module owns its queries (internal/<module>/queries.sql) and gets its
+# own generated package (internal/<module>/store); the schema is the migrations.
+version: "2"
+sql:
+  - engine: postgresql
+    schema: migrations
+    queries: internal/federation/queries.sql
+    gen:
+      go:
+        package: store
+        out: internal/federation/store
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: uuid
+            go_type: github.com/google/uuid.UUID
+          - db_type: timestamptz
+            go_type: time.Time

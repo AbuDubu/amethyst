@@ -1,6 +1,6 @@
 # Run from the repository root. `make help` lists targets.
 .DEFAULT_GOAL := help
-.PHONY: help web-install web-build db-up db-down db-reset migrate dev dev-web test check build clean
+.PHONY: help web-install web-build db-up db-down db-reset migrate generate dev dev-web test check build clean
 
 COMPOSE := docker compose -f deploy/compose.yaml
 # Matches deploy/compose.yaml; development only.
@@ -28,6 +28,9 @@ db-down: ## Stop local dependencies (data is kept)
 
 db-reset: ## Stop local dependencies and delete their data
 	$(COMPOSE) down --volumes
+
+generate: ## Regenerate code from SQL queries (sqlc)
+	cd server && go tool sqlc generate
 
 migrate: db-up ## Apply pending database migrations
 	cd server && go run ./cmd/amethyst migrate
