@@ -1,0 +1,34 @@
+/* Placeholder tokens; the design-token set is finalized in the first UI ticket. */
+:root {
+  --color-surface: #faf6f0;
+  --color-text: #2b2522;
+  --color-muted: #6f6660;
+  --color-accent: #6b4a6e;
+  --font-serif: Georgia, 'Iowan Old Style', serif;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  color-scheme: light dark;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface: #1f1b1a;
+    --color-text: #ece5dd;
+    --color-muted: #a99f97;
+    --color-accent: #c8a2cb;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}

@@ -1,0 +1,17 @@
+.page {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 4rem 1rem;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  margin: 0 0 0.5rem;
+  color: var(--color-accent);
+}
+
+.tagline {
+  margin: 0;
+  color: var(--color-muted);
+}
