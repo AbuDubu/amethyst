@@ -68,3 +68,29 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  # Generated code (OpenAPI → Go and TypeScript, SQL → Go) must match its
+  # sources. Fails when someone edits a contract or query without running
+  # `make generate`, or edits generated code by hand.
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: make generate
+      - name: Generated code is up to date
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Generated code differs from the committed version. Run 'make generate' and commit:"
+            git status --porcelain
+            git diff
+            exit 1
+          fi
