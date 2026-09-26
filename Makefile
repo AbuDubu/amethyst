@@ -5,6 +5,7 @@
 COMPOSE := docker compose -f deploy/compose.yaml
 # Matches deploy/compose.yaml; development only.
 export AMETHYST_DATABASE_URL ?= postgres://amethyst:amethyst@localhost:5432/amethyst?sslmode=disable
+export AMETHYST_CANONICAL_ORIGIN ?= http://localhost:8080
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 # Admin connection used by tests to create a throwaway database per test.
 export AMETHYST_TEST_DATABASE_URL ?= postgres://amethyst:amethyst@localhost:5432/postgres?sslmode=disable
