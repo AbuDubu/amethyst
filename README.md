@@ -25,6 +25,7 @@ make dev        # build the UI, apply migrations, run the Go server at http://lo
 make dev-web    # in a second terminal: hot-reloading UI at http://localhost:5173
 make check      # every CI check: formatting, static analysis, types, lint, tests, build
 make generate   # regenerate code after editing api/openapi.yaml or a queries.sql file
+make jobs       # background job queue: pending/failed counts, most overdue job, recent failures
 make build      # production build: web/dist and server/bin/amethyst
 ```
 

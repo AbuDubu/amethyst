@@ -362,3 +362,32 @@ func TestBackoff(t *testing.T) {
 		t.Errorf("default retries span %v, want about 4h", total)
 	}
 }
+
+func TestReadStats(t *testing.T) {
+	ctx := context.Background()
+	pool := dbtest.New(t)
+	once := jobs.Kind[greeting]{Name: "test.once", Options: jobs.Options{MaxAttempts: 1}}
+	r := jobs.NewRegistry()
+	jobs.Handle(r, once, func(context.Context, greeting) error { return errors.New("mailbox full") })
+
+	_ = once.Enqueue(ctx, pool, greeting{})
+	if _, err := newWorker(pool, r).RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	_ = greet.Enqueue(ctx, pool, greeting{})
+	_, _ = pool.Exec(ctx, `UPDATE jobs SET run_after = now() - interval '90 seconds' WHERE kind = 'test.greet'`)
+
+	s, err := jobs.ReadStats(ctx, pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Counts) != 2 {
+		t.Errorf("counts = %+v, want one pending greet and one failed once", s.Counts)
+	}
+	if s.Overdue < 85*time.Second {
+		t.Errorf("Overdue = %v, want about 90s", s.Overdue)
+	}
+	if len(s.RecentFailures) != 1 || *s.RecentFailures[0].LastError != "mailbox full" {
+		t.Errorf("RecentFailures = %+v, want the mailbox-full failure", s.RecentFailures)
+	}
+}
