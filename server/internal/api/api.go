@@ -28,9 +28,10 @@ const readinessTimeout = 2 * time.Second
 
 // Deps are what the API handlers need from the rest of the application.
 type Deps struct {
-	Ready   ReadinessCheck
-	Version string
-	Logger  *slog.Logger
+	Ready           ReadinessCheck
+	CanonicalOrigin string
+	Version         string
+	Logger          *slog.Logger
 }
 
 // NewHandler returns the handler for every /api/ request.
@@ -85,5 +86,9 @@ func (s *server) GetReadyz(ctx context.Context, _ apigen.GetReadyzRequestObject)
 }
 
 func (s *server) GetServerInfo(context.Context, apigen.GetServerInfoRequestObject) (apigen.GetServerInfoResponseObject, error) {
-	return apigen.GetServerInfo200JSONResponse{Software: "amethyst", Version: s.deps.Version}, nil
+	return apigen.GetServerInfo200JSONResponse{
+		CanonicalOrigin: s.deps.CanonicalOrigin,
+		Software:        "amethyst",
+		Version:         s.deps.Version,
+	}, nil
 }

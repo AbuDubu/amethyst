@@ -9,14 +9,18 @@ describe('ServerStatus', () => {
   it('shows the running version once the server answers', async () => {
     server.use(
       http.get('*/api/server', () =>
-        HttpResponse.json({ software: 'amethyst', version: 'v0.1.0' }),
+        HttpResponse.json({
+          canonical_origin: 'https://a.example',
+          software: 'amethyst',
+          version: 'v0.1.0',
+        }),
       ),
     )
 
     renderWithProviders(<ServerStatus />)
 
     expect(screen.getByText('Checking server…')).toBeInTheDocument()
-    expect(await screen.findByText('Running amethyst v0.1.0')).toBeInTheDocument()
+    expect(await screen.findByText('https://a.example · running amethyst v0.1.0')).toBeInTheDocument()
   })
 
   it('explains when the server returns an error', async () => {

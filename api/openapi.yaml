@@ -65,8 +65,12 @@ components:
 
     ServerInfo:
       type: object
-      required: [software, version]
+      required: [canonical_origin, software, version]
       properties:
+        canonical_origin:
+          type: string
+          description: This server's permanent identity.
+          example: https://example.org
         software:
           type: string
           description: Always "amethyst".

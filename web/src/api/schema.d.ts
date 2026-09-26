@@ -65,6 +65,11 @@ export interface components {
         };
         ServerInfo: {
             /**
+             * @description This server's permanent identity.
+             * @example https://example.org
+             */
+            canonical_origin: string;
+            /**
              * @description Always "amethyst".
              * @example amethyst
              */
