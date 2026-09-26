@@ -24,7 +24,7 @@ make db-up      # start PostgreSQL and Mailpit (captured mail: http://localhost:
 make dev        # build the UI, apply migrations, run the Go server at http://localhost:8080
 make dev-web    # in a second terminal: hot-reloading UI at http://localhost:5173
 make check      # every CI check: formatting, static analysis, types, lint, tests, build
-make generate   # regenerate Go query code after editing a queries.sql file
+make generate   # regenerate code after editing api/openapi.yaml or a queries.sql file
 make build      # production build: web/dist and server/bin/amethyst
 ```
 
