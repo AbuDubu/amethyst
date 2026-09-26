@@ -92,7 +92,7 @@ General design recommendations, followed by the accepted application structure:
 ### Accepted backend and API choices
 
 - Go standard-library HTTP routing; pgx database driver and sqlc-generated query methods from explicit SQL; versioned SQL migrations. Migration tool and dependency versions are implementation-ticket choices, not architectural requirements.
-- JSON REST browser API described by OpenAPI, with generated TypeScript request/response types. Browser and application share an origin; federation has a separate versioned interface.
+- JSON REST browser API described by OpenAPI, with generated Go server code (oapi-codegen, validated against the spec at runtime) and TypeScript types (openapi-typescript with openapi-fetch). Unversioned browser paths; RFC 9457 Problem Details for errors. Browser and application share an origin; federation has a separate versioned interface.
 - Federation over HTTPS with a documented RFC 9421 HTTP Message Signatures profile and a vetted implementation. No custom signing algorithm. Operator-approved peer keys establish trust; version, covered request components, replay rejection, rotation, and actor binding must be specified before protocol implementation.
 - Selected test-tool defaults for ticket planning: Go tests and PostgreSQL integration tests; Vitest/Testing Library for frontend behavior; Playwright for key browser journeys; a two-server federation harness for failure cases. Exact versions and harness configuration belong to the foundation ticket.
 

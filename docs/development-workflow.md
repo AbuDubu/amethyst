@@ -23,7 +23,7 @@ Development is a collaborative learning process. The owner must understand the s
 4. Run required checks and present a reviewable change, demonstration, and explanation of the important trade-offs.
 5. Walk through the result and tests with the owner before moving into the next learning increment, at the agreed cadence.
 
-Use a versioned OpenAPI contract for the browser/backend interface with generated frontend types. Federation has its own versioned contract and compatibility tests. Explain changes to either contract in the implementing ticket.
+The browser/backend interface is an OpenAPI contract (`api/openapi.yaml`) kept in version control, from which Go server code and TypeScript types are generated; CI fails if generated code is stale. Browser API paths carry no version (`/api/...`) because the frontend and backend always ship as one artifact. Errors use RFC 9457 Problem Details (`application/problem+json`) with an added stable `code`. Federation has its own contract with versioned paths (`/federation/v1/...`) and compatibility tests, because independently operated servers run different releases. Explain changes to either contract in the implementing ticket.
 
 ## Proposed verification
 

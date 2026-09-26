@@ -1,0 +1,107 @@
+# Browser API contract: the source of truth for generated Go server code
+# (server/internal/api/apigen) and TypeScript types (web/src/api/schema.d.ts).
+# Run `make generate` after editing. Paths carry no version: the browser API and
+# the frontend always ship together. Federation has its own versioned contract.
+openapi: 3.0.3
+info:
+  title: Amethyst browser API
+  version: 0.1.0
+  license:
+    name: AGPL-3.0-only
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+
+paths:
+  /api/healthz:
+    get:
+      operationId: getHealthz
+      summary: Liveness — the process is serving HTTP. Checks no dependencies.
+      tags: [operations]
+      responses:
+        "200":
+          description: Alive.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+
+  /api/readyz:
+    get:
+      operationId: getReadyz
+      summary: Readiness — dependencies are reachable and the schema is current.
+      tags: [operations]
+      responses:
+        "200":
+          description: Ready to serve traffic.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+        "503":
+          description: Not ready. The reason is logged, not returned.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+
+  /api/server:
+    get:
+      operationId: getServerInfo
+      summary: Describe this server.
+      tags: [server]
+      responses:
+        "200":
+          description: Server information.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServerInfo" }
+        default: { $ref: "#/components/responses/Problem" }
+
+components:
+  schemas:
+    Status:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, ready, not_ready]
+
+    ServerInfo:
+      type: object
+      required: [software, version]
+      properties:
+        software:
+          type: string
+          description: Always "amethyst".
+          example: amethyst
+        version:
+          type: string
+          description: Build version of the running server.
+          example: v0.1.0-12-gabc1234
+
+    Problem:
+      description: RFC 9457 Problem Details, plus a stable machine-readable `code`.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          description: URI identifying the problem type; "about:blank" when the HTTP status says it all.
+          example: about:blank
+        title:
+          type: string
+          example: Not Found
+        status:
+          type: integer
+          example: 404
+        detail:
+          type: string
+          description: Human-readable explanation of this occurrence. Never contains secrets or internal errors.
+        code:
+          type: string
+          description: Stable identifier the frontend may branch on.
+          example: not_found
+
+  responses:
+    Problem:
+      description: An error, described as Problem Details.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
