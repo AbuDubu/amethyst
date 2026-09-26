@@ -17,12 +17,16 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AbuDubu/amethyst/server/internal/api"
 	"github.com/AbuDubu/amethyst/server/internal/platform/config"
 	"github.com/AbuDubu/amethyst/server/internal/platform/db"
 	"github.com/AbuDubu/amethyst/server/internal/platform/httpserver"
 )
 
-const usage = "usage: amethyst <migrate|serve>"
+const usage = "usage: amethyst <migrate|serve|version>"
+
+// version is set at build time with -ldflags "-X main.version=...".
+var version = "dev"
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -38,6 +42,8 @@ func main() {
 
 	var err error
 	switch os.Args[1] {
+	case "version":
+		fmt.Println(version)
 	case "migrate":
 		err = migrate(ctx, logger)
 	case "serve":
@@ -98,7 +104,15 @@ func serve(ctx context.Context, logger *slog.Logger) error {
 		logger.Warn("database schema is not current", "error", err)
 	}
 
-	handler, err := httpserver.New(os.DirFS(cfg.WebDir), db.Ready(pool, migrator), logger)
+	apiHandler, err := api.NewHandler(api.Deps{
+		Ready:   db.Ready(pool, migrator),
+		Version: version,
+		Logger:  logger,
+	})
+	if err != nil {
+		return err
+	}
+	handler, err := httpserver.New(os.DirFS(cfg.WebDir), apiHandler)
 	if err != nil {
 		return err
 	}
@@ -111,7 +125,7 @@ func serve(ctx context.Context, logger *slog.Logger) error {
 
 	serveErr := make(chan error, 1)
 	go func() {
-		logger.Info("listening", "addr", cfg.Addr, "web_dir", cfg.WebDir)
+		logger.Info("listening", "addr", cfg.Addr, "web_dir", cfg.WebDir, "version", version)
 		serveErr <- srv.ListenAndServe()
 	}()
 
