@@ -3,7 +3,9 @@
 // Usage:
 //
 //	amethyst migrate   apply pending database migrations, then exit
-//	amethyst serve     run the HTTP server
+//	amethyst serve     run the HTTP server and background job worker
+//	amethyst jobs      show background job queue status
+//	amethyst version   print the build version
 package main
 
 import (
@@ -15,6 +17,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"text/tabwriter"
 	"time"
 
 	"github.com/AbuDubu/amethyst/server/internal/api"
@@ -23,9 +26,10 @@ import (
 	"github.com/AbuDubu/amethyst/server/internal/platform/config"
 	"github.com/AbuDubu/amethyst/server/internal/platform/db"
 	"github.com/AbuDubu/amethyst/server/internal/platform/httpserver"
+	"github.com/AbuDubu/amethyst/server/internal/platform/jobs"
 )
 
-const usage = "usage: amethyst <migrate|serve|version>"
+const usage = "usage: amethyst <migrate|serve|jobs|version>"
 
 // version is set at build time with -ldflags "-X main.version=...".
 var version = "dev"
@@ -50,6 +54,8 @@ func main() {
 		err = migrate(ctx, logger)
 	case "serve":
 		err = serve(ctx, logger)
+	case "jobs":
+		err = showJobs(ctx)
 	default:
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(2)
@@ -125,6 +131,15 @@ func serve(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
+	// Job kinds are registered here as features add them (email in #11).
+	registry := jobs.NewRegistry()
+	worker := jobs.NewWorker(pool, registry, logger)
+	workerDone := make(chan struct{})
+	go func() {
+		defer close(workerDone)
+		worker.Run(ctx)
+	}()
+
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           handler,
@@ -152,6 +167,43 @@ func serve(ctx context.Context, logger *slog.Logger) error {
 	}
 	if err := <-serveErr; !errors.Is(err, http.ErrServerClosed) {
 		return err
+	}
+	// The worker stopped claiming when ctx was cancelled; wait for running jobs.
+	<-workerDone
+	return nil
+}
+
+func showJobs(ctx context.Context) error {
+	cfg, err := config.Load(os.Getenv)
+	if err != nil {
+		return err
+	}
+	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	stats, err := jobs.ReadStats(ctx, pool)
+	if err != nil {
+		return err
+	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "KIND\tSTATUS\tJOBS")
+	for _, c := range stats.Counts {
+		fmt.Fprintf(w, "%s\t%s\t%d\n", c.Kind, c.Status, c.Jobs)
+	}
+	if len(stats.Counts) == 0 {
+		fmt.Fprintln(w, "(queue empty)\t\t")
+	}
+	_ = w.Flush()
+	fmt.Printf("\nMost overdue runnable job: %s\n", stats.Overdue.Round(time.Second))
+	if len(stats.RecentFailures) > 0 {
+		fmt.Println("\nRecent failures:")
+		for _, f := range stats.RecentFailures {
+			fmt.Printf("  %s  %s  %s after %d attempts: %s\n",
+				f.FailedAt.Format(time.RFC3339), f.ID, f.Kind, f.Attempts, *f.LastError)
+		}
 	}
 	return nil
 }

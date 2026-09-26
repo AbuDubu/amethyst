@@ -1,6 +1,6 @@
 # Run from the repository root. `make help` lists targets.
 .DEFAULT_GOAL := help
-.PHONY: help web-install web-build db-up db-down db-reset fed-up fed-down smoke migrate generate dev dev-web test check build clean
+.PHONY: help web-install web-build db-up db-down db-reset fed-up fed-down smoke migrate generate jobs dev dev-web test check build clean
 
 COMPOSE := docker compose -f deploy/compose.yaml
 # Matches deploy/compose.yaml; development only.
@@ -47,6 +47,9 @@ generate: web/node_modules ## Regenerate code from SQL queries and the OpenAPI c
 
 migrate: db-up ## Apply pending database migrations
 	cd server && go run ./cmd/amethyst migrate
+
+jobs: ## Show background job queue status
+	cd server && go run ./cmd/amethyst jobs
 
 dev: web-build migrate ## Run the Go server on :8080, serving the built frontend
 	cd server && AMETHYST_WEB_DIR=../web/dist go run ./cmd/amethyst serve
