@@ -1,5 +1,23 @@
 # Local development dependencies. Start with `make db-up` from the repository root.
+#
+# The `federation` profile (`make fed-up`) also runs two independent Amethyst
+# servers from the production image, each with its own database and identity:
+#   server A  http://a.localhost:8081  (database amethyst_a)
+#   server B  http://b.localhost:8082  (database amethyst_b)
+# Each listens on the same port inside the network as on the host, and has a
+# network alias matching its hostname, so one origin works from the browser
+# and from the other server. (Browsers and curl resolve *.localhost to
+# loopback themselves, which reaches the published port; Go inside the network
+# asks Docker's DNS, which resolves the alias.)
 name: amethyst
+
+x-amethyst: &amethyst
+  image: amethyst:local
+  build:
+    context: ..
+    args:
+      VERSION: ${AMETHYST_VERSION:-dev}
+  profiles: [federation]
 
 services:
   postgres:
@@ -25,6 +43,67 @@ services:
     ports:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
+
+  # Creates each server's database if missing (runs on existing volumes too,
+  # unlike /docker-entrypoint-initdb.d scripts).
+  federation-dbs:
+    image: postgres:18-alpine
+    profiles: [federation]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      PGPASSWORD: amethyst
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        for db in amethyst_a amethyst_b; do
+          psql -h postgres -U amethyst -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$$db'" | grep -q 1 \
+            || psql -h postgres -U amethyst -d postgres -c "CREATE DATABASE $$db"
+        done
+
+  # Migrations are an explicit step, as in production: each server starts only
+  # after its migrate job succeeds.
+  migrate-a:
+    <<: *amethyst
+    command: ["migrate"]
+    environment: &server-a-env
+      AMETHYST_DATABASE_URL: postgres://amethyst:amethyst@postgres:5432/amethyst_a?sslmode=disable
+      AMETHYST_CANONICAL_ORIGIN: http://a.localhost:8081
+      AMETHYST_ADDR: ":8081"
+    depends_on:
+      federation-dbs: { condition: service_completed_successfully }
+
+  server-a:
+    <<: *amethyst
+    environment: *server-a-env
+    ports:
+      - "127.0.0.1:8081:8081"
+    networks:
+      default:
+        aliases: [a.localhost]
+    depends_on:
+      migrate-a: { condition: service_completed_successfully }
+
+  migrate-b:
+    <<: *amethyst
+    command: ["migrate"]
+    environment: &server-b-env
+      AMETHYST_DATABASE_URL: postgres://amethyst:amethyst@postgres:5432/amethyst_b?sslmode=disable
+      AMETHYST_CANONICAL_ORIGIN: http://b.localhost:8082
+      AMETHYST_ADDR: ":8082"
+    depends_on:
+      federation-dbs: { condition: service_completed_successfully }
+
+  server-b:
+    <<: *amethyst
+    environment: *server-b-env
+    ports:
+      - "127.0.0.1:8082:8082"
+    networks:
+      default:
+        aliases: [b.localhost]
+    depends_on:
+      migrate-b: { condition: service_completed_successfully }
 
 volumes:
   postgres-data:

@@ -1,6 +1,6 @@
 # Run from the repository root. `make help` lists targets.
 .DEFAULT_GOAL := help
-.PHONY: help web-install web-build db-up db-down db-reset migrate generate dev dev-web test check build clean
+.PHONY: help web-install web-build db-up db-down db-reset fed-up fed-down smoke migrate generate dev dev-web test check build clean
 
 COMPOSE := docker compose -f deploy/compose.yaml
 # Matches deploy/compose.yaml; development only.
@@ -29,7 +29,16 @@ db-down: ## Stop local dependencies (data is kept)
 	$(COMPOSE) down
 
 db-reset: ## Stop local dependencies and delete their data
-	$(COMPOSE) down --volumes
+	$(COMPOSE) --profile federation down --volumes
+
+fed-up: ## Build the image and run two servers: http://a.localhost:8081 and http://b.localhost:8082
+	AMETHYST_VERSION=$(VERSION) $(COMPOSE) --profile federation up -d --build
+
+fed-down: ## Stop the two servers (dependencies keep running)
+	$(COMPOSE) --profile federation stop server-a server-b
+
+smoke: ## Run the two-server smoke test
+	AMETHYST_VERSION=$(VERSION) deploy/smoke-federation.sh
 
 generate: web/node_modules ## Regenerate code from SQL queries and the OpenAPI contract
 	cd server && go tool sqlc generate
