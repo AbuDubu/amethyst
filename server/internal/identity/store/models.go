@@ -21,6 +21,23 @@ type Account struct {
 	UpdatedAt    time.Time
 }
 
+type Job struct {
+	ID           uuid.UUID
+	Kind         string
+	Payload      []byte
+	Status       string
+	Attempts     int32
+	MaxAttempts  int32
+	LeaseSeconds int32
+	Sensitive    bool
+	RunAfter     time.Time
+	LeaseUntil   *time.Time
+	LastError    *string
+	FailedAt     *time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type LocalAccount struct {
 	AccountID       uuid.UUID
 	Email           string
