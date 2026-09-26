@@ -5,6 +5,7 @@
 COMPOSE := docker compose -f deploy/compose.yaml
 # Matches deploy/compose.yaml; development only.
 export AMETHYST_DATABASE_URL ?= postgres://amethyst:amethyst@localhost:5432/amethyst?sslmode=disable
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 # Admin connection used by tests to create a throwaway database per test.
 export AMETHYST_TEST_DATABASE_URL ?= postgres://amethyst:amethyst@localhost:5432/postgres?sslmode=disable
 
@@ -29,8 +30,9 @@ db-down: ## Stop local dependencies (data is kept)
 db-reset: ## Stop local dependencies and delete their data
 	$(COMPOSE) down --volumes
 
-generate: ## Regenerate code from SQL queries (sqlc)
+generate: ## Regenerate code from SQL queries and the OpenAPI contract
 	cd server && go tool sqlc generate
+	cd server && go tool oapi-codegen -config internal/api/apigen/oapi-codegen.yaml ../api/openapi.yaml
 
 migrate: db-up ## Apply pending database migrations
 	cd server && go run ./cmd/amethyst migrate
@@ -56,7 +58,7 @@ check: web/node_modules db-up ## Run every CI check locally
 	cd web && npm run build
 
 build: web-build ## Build the frontend and the server binary (server/bin/amethyst)
-	cd server && go build -o bin/amethyst ./cmd/amethyst
+	cd server && go build -ldflags "-X main.version=$(VERSION)" -o bin/amethyst ./cmd/amethyst
 
 clean: ## Remove build output
 	rm -rf web/dist server/bin

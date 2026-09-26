@@ -1,11 +1,6 @@
 package httpserver
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,18 +10,20 @@ import (
 
 const indexHTML = `<!doctype html><div id="root"></div>`
 
-func newTestHandler(t *testing.T) http.Handler {
-	t.Helper()
-	return newTestHandlerWithReadiness(t, func(context.Context) error { return nil })
-}
+// apiStub stands in for the real API so these tests cover only routing between
+// the API and the frontend; the API has its own tests.
+var apiStub = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("X-Handled-By", "api")
+	w.WriteHeader(http.StatusTeapot)
+})
 
-func newTestHandlerWithReadiness(t *testing.T, ready ReadinessCheck) http.Handler {
+func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
 	web := fstest.MapFS{
 		"index.html":    {Data: []byte(indexHTML)},
 		"assets/app.js": {Data: []byte("console.log('app')")},
 	}
-	h, err := New(web, ready, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	h, err := New(web, apiStub)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -39,78 +36,22 @@ func get(h http.Handler, method, target string) *httptest.ResponseRecorder {
 	return rec
 }
 
-func TestHealthz(t *testing.T) {
-	rec := get(newTestHandler(t), http.MethodGet, "/api/healthz")
+func TestEveryAPIPathGoesToTheAPIHandler(t *testing.T) {
+	for _, target := range []string{"/api/healthz", "/api/nope", "/api/", "/api/communities/x"} {
+		for _, method := range []string{http.MethodGet, http.MethodPost} {
+			t.Run(method+" "+target, func(t *testing.T) {
+				rec := get(newTestHandler(t), method, target)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
-	}
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("body is not JSON: %v", err)
-	}
-	if body["status"] != "ok" {
-		t.Errorf("status field = %q, want ok", body["status"])
-	}
-}
-
-func TestReadyzWhenDependenciesAreReady(t *testing.T) {
-	rec := get(newTestHandler(t), http.MethodGet, "/api/readyz")
-
-	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rec.Code)
-	}
-}
-
-func TestReadyzFailsButHealthzPassesWhenDatabaseIsDown(t *testing.T) {
-	h := newTestHandlerWithReadiness(t, func(context.Context) error {
-		return errors.New("dial tcp 10.0.0.5:5432: connection refused")
-	})
-
-	ready := get(h, http.MethodGet, "/api/readyz")
-	if ready.Code != http.StatusServiceUnavailable {
-		t.Errorf("readyz status = %d, want 503", ready.Code)
-	}
-	if strings.Contains(ready.Body.String(), "10.0.0.5") {
-		t.Error("readyz response leaked the internal error")
-	}
-
-	if live := get(h, http.MethodGet, "/api/healthz"); live.Code != http.StatusOK {
-		t.Errorf("healthz status = %d, want 200 (liveness must not depend on the database)", live.Code)
-	}
-}
-
-func TestReadyzGivesUpOnAHungDependency(t *testing.T) {
-	h := newTestHandlerWithReadiness(t, func(ctx context.Context) error {
-		<-ctx.Done() // Simulates a dependency that never answers.
-		return ctx.Err()
-	})
-
-	if rec := get(h, http.MethodGet, "/api/readyz"); rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503", rec.Code)
-	}
-}
-
-func TestUnknownAPIPathIsJSON404NotFrontend(t *testing.T) {
-	for _, target := range []string{"/api/nope", "/api/v1/communities/x", "/api/"} {
-		t.Run(target, func(t *testing.T) {
-			rec := get(newTestHandler(t), http.MethodGet, target)
-
-			if rec.Code != http.StatusNotFound {
-				t.Errorf("status = %d, want 404", rec.Code)
-			}
-			if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
-				t.Errorf("Content-Type = %q, want application/json", ct)
-			}
-			if strings.Contains(rec.Body.String(), "<!doctype html>") {
-				t.Error("API miss returned the frontend shell")
-			}
-		})
+				if rec.Header().Get("X-Handled-By") != "api" {
+					t.Errorf("not routed to the API (status %d)", rec.Code)
+				}
+			})
+		}
 	}
 }
 
 func TestClientRoutesReceiveIndex(t *testing.T) {
-	for _, target := range []string{"/", "/communities/gardening", "/c/a/discussions/42"} {
+	for _, target := range []string{"/", "/communities/gardening", "/c/a/discussions/42", "/apiary"} {
 		t.Run(target, func(t *testing.T) {
 			rec := get(newTestHandler(t), http.MethodGet, target)
 
@@ -152,7 +93,7 @@ func TestNonGETToFrontendIsRejected(t *testing.T) {
 }
 
 func TestNewFailsWithoutFrontendBuild(t *testing.T) {
-	_, err := New(fstest.MapFS{}, func(context.Context) error { return nil }, slog.Default())
+	_, err := New(fstest.MapFS{}, apiStub)
 
 	if err == nil {
 		t.Fatal("New succeeded without index.html, want error")

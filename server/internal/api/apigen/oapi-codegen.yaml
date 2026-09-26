@@ -1,0 +1,8 @@
+# Generates api.gen.go from ../../../../api/openapi.yaml. Run `make generate`.
+package: apigen
+output: internal/api/apigen/api.gen.go
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
+  embedded-spec: true
