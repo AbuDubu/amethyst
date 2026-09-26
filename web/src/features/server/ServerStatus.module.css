@@ -1,0 +1,5 @@
+.status {
+  margin: 2rem 0 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
