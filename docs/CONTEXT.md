@@ -12,6 +12,14 @@ _Avoid_: Community, group
 A person's identity on one home server, through which they can participate in communities on that server or other servers.
 _Avoid_: Person (one person and one account are not necessarily the same thing)
 
+**Local account**:
+An account whose home server is this server; only local accounts have credentials, an email address, or a server role here.
+_Avoid_: User (ambiguous between a person and an account)
+
+**Remote account**:
+An account known to this server whose home server is another server.
+_Avoid_: Foreign user, guest
+
 **Home server**:
 The server to which an account belongs.
 _Avoid_: Community server when referring to an account's home
@@ -81,6 +89,10 @@ _Avoid_: Discussion when referring to one response
 **Server invitation**:
 Permission to register an account on a server; it does not confer community membership.
 _Avoid_: Community invitation
+
+**Operator invitation**:
+A server invitation that also makes the registering account a server operator; the first one is issued from the command line to bootstrap a new server.
+_Avoid_: Admin account
 
 **Community invitation**:
 An invitation for an account to become a member of a particular community.
