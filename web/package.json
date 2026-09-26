@@ -9,9 +9,12 @@
     "lint": "oxlint --deny-warnings",
     "preview": "vite preview",
     "typecheck": "tsc -b",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate": "openapi-typescript ../api/openapi.yaml -o src/api/schema.d.ts"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.103.3",
+    "openapi-fetch": "^0.17.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
@@ -24,6 +27,8 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^30.1.1",
+    "msw": "^2.15.0",
+    "openapi-typescript": "^7.13.0",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
@@ -31,5 +36,10 @@
   },
   "engines": {
     "node": ">=26"
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import styles from './App.module.css'
+import { ServerStatus } from './features/server/ServerStatus'
 
 function App() {
   return (
@@ -7,6 +8,7 @@ function App() {
       <p className={styles.tagline}>
         Community discussions across independently operated servers.
       </p>
+      <ServerStatus />
     </main>
   )
 }

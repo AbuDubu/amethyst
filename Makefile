@@ -30,9 +30,10 @@ db-down: ## Stop local dependencies (data is kept)
 db-reset: ## Stop local dependencies and delete their data
 	$(COMPOSE) down --volumes
 
-generate: ## Regenerate code from SQL queries and the OpenAPI contract
+generate: web/node_modules ## Regenerate code from SQL queries and the OpenAPI contract
 	cd server && go tool sqlc generate
 	cd server && go tool oapi-codegen -config internal/api/apigen/oapi-codegen.yaml ../api/openapi.yaml
+	cd web && npm run generate
 
 migrate: db-up ## Apply pending database migrations
 	cd server && go run ./cmd/amethyst migrate
