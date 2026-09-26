@@ -14,6 +14,14 @@
 - Account handles have a fixed username and home server in the first release, with editable display names and avatars. Account migration is deferred. Login initially uses local username/password credentials and revocable server-side browser sessions carried in secure cookies. A verified email address stays private on the home server and supports expiring, single-use password recovery links. Password resets invalidate existing sessions. Email delivery must be included in deployment and isolated in tests.
 - Account closure offers two choices: retain contributions under a deleted-member identity or request their deletion, with deletion the default. Remove the profile, credentials, email, and sessions while keeping minimal identity placeholders required for references. Owners must transfer ownership or archive their communities first. Remote deletion remains visibly unresolved when a host cannot be reached or no longer accepts communication.
 - Server registration supports open enrollment, operator approval, and invitation-only modes. The pilot starts with invitations. A server invitation does not confer community membership.
+- Identity details accepted for Milestone 1:
+  - Only invitation-only registration is built first; the mode is a server setting so open enrollment and operator approval can follow.
+  - The first operator registers through the normal flow using a one-time operator invitation printed by `amethyst invite --operator`; no password is ever passed on a command line or in configuration.
+  - Usernames: 3–30 characters of `a–z`, `0–9`, `_`, starting with a letter; case-insensitive and unique per home server; a small reserved list. Handles display as `@name@server`.
+  - An account's canonical URL is ID-based (`{origin}/accounts/{id}`) so identity never depends on a name; people visit a readable profile at `/@name`.
+  - Passwords are hashed with argon2id (OWASP parameters, stored in PHC format so outdated hashes are upgraded at login). Policy: 12–128 characters, rejecting a bundled list of commonly used passwords; no external breach-lookup service.
+  - Browser sessions use a random token in a `__Host-session` cookie (Secure, HttpOnly, SameSite=Lax), stored only as a hash, expiring after 30 idle days or 90 days total. Cross-site request forgery is rejected with Go's `http.CrossOriginProtection` (Fetch Metadata).
+  - Email is sent through a durable PostgreSQL job queue processed by an in-process worker — the same transactional pattern as the federation outbox, established on a simpler workload first.
 - Approved local accounts can create communities and become their owners. Owners manage settings, moderator appointments, and community sharing approvals. Moderators manage membership requests, reports, content removals, and bans. Server operators may suspend hosted communities and disconnect peers.
 - Community discussions are the core interaction, rather than personal status feeds.
 - First-release content includes titled discussions with Markdown text and optional images, threaded replies, chronological ordering, bookmarks, and in-app notifications for replies and membership decisions. Reactions, polls, direct messages, and video uploads are deferred.
@@ -113,7 +121,7 @@ These are proposed logical relations, not accepted column definitions or impleme
 
 | Area | Candidate relations | Purpose |
 | --- | --- | --- |
-| Identity | `accounts`, `local_credentials`, `sessions`, `account_tokens`, `registration_requests`, `server_invitations` | Represent local and known remote identities while keeping credentials, email, sessions, and verification/recovery tokens local. |
+| Identity | `accounts`, `local_accounts`, `sessions`, `account_tokens`, `registration_requests`, `server_invitations` | Represent local and known remote identities while keeping credentials, email, sessions, and verification/recovery tokens local. |
 | Server trust | `servers`, `peer_connections`, `peer_keys` | Track remote identity, mutual connection approval, and HTTP Message Signature verification keys. Key lifecycle details belong to protocol design tickets. |
 | Communities | `communities`, `community_peer_grants` | Store host, access preset, admission rule, owner, status, and explicit directional sharing approvals. |
 | Participation | `memberships`, `membership_restrictions`, `community_invitations` | Track admission, roles, bans, and independently removable access restrictions. Revoked-peer suspension must not erase a ban or be lifted accidentally by re-peering. |
@@ -129,8 +137,8 @@ Every relation has an appropriate primary key. Timestamps use timezone-aware val
 
 | Relation | Important fields and constraints |
 | --- | --- |
-| `accounts` | `id`, `home_server_id`, `canonical_url`, `username`, `display_name`, `avatar_id`, `status`; unique canonical URL and normalized `(home_server_id, username)`. |
-| `local_credentials` | `account_id` primary/foreign key, normalized unique `email`, `email_verified_at`, `password_hash`; local accounts only; never serialized to peers. |
+| `accounts` | `id`, `home_server_id`, `canonical_url` (ID-based), `username`, `display_name`, `avatar_id`, `status`; unique canonical URL and `(home_server_id, username)`. Shared identity; nothing private. |
+| `local_accounts` | `account_id` primary/foreign key, case-insensitively unique `email`, `email_verified_at`, `password_hash`, `server_role` (`member`/`operator`); local accounts only; never serialized to peers. |
 | `sessions` | `id`, `account_id`, unique `token_hash`, `created_at`, `expires_at`, `revoked_at`; raw session secrets are not stored. |
 | `account_tokens` | `id`, `account_id`, `purpose`, unique `token_hash`, `expires_at`, `consumed_at`; purpose distinguishes email verification and password recovery. |
 | `servers` | `id`, unique `canonical_origin`, `status`; the local server is explicitly identified. |
