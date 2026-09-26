@@ -94,3 +94,12 @@ jobs:
             git diff
             exit 1
           fi
+
+  # Builds the production image and runs two independent servers from it.
+  # Not yet a required check; it becomes required when federation work
+  # starts (Milestone 4).
+  federation-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: make smoke

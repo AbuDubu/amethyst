@@ -28,9 +28,26 @@ make generate   # regenerate code after editing api/openapi.yaml or a queries.sq
 make build      # production build: web/dist and server/bin/amethyst
 ```
 
-`make db-reset` deletes all local database data. The server binary has two commands: `amethyst migrate` applies pending schema migrations, and `amethyst serve` runs HTTP. Migrations never run implicitly; `/api/readyz` reports 503 until they are applied.
+`make db-reset` deletes all local database data. The server binary has two main commands: `amethyst migrate` applies pending schema migrations, and `amethyst serve` runs HTTP. Migrations never run implicitly; `serve` refuses to start until they are applied.
 
-Configuration (environment variables): `AMETHYST_DATABASE_URL` (required; the Makefile supplies the local one), `AMETHYST_ADDR` (default `:8080`), `AMETHYST_WEB_DIR` (default `web/dist`). Tests use `AMETHYST_TEST_DATABASE_URL` to create a throwaway database per test, and fail if it is unset.
+Configuration (environment variables):
+
+- `AMETHYST_DATABASE_URL` (required)
+- `AMETHYST_CANONICAL_ORIGIN` (required): the server's permanent identity, such as `https://example.org`. Plain `http` is allowed only for `localhost`. It is recorded on first start, and the server refuses to start if it later changes.
+- `AMETHYST_ADDR` (default `:8080`)
+- `AMETHYST_WEB_DIR` (default `web/dist`)
+
+The Makefile supplies local values for the required variables.
+
+### Two servers
+
+```bash
+make fed-up     # build the image; run http://a.localhost:8081 and http://b.localhost:8082
+make smoke      # check each has its own identity and database, and can reach the other
+make fed-down
+```
+
+Each server has its own database (`amethyst_a`, `amethyst_b`) on the shared PostgreSQL. `*.localhost` names resolve to your machine in browsers and curl, with no hosts-file changes needed. Tests use `AMETHYST_TEST_DATABASE_URL` to create a throwaway database per test, and fail if it is unset.
 
 ## License
 
