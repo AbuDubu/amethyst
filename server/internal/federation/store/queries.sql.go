@@ -48,3 +48,15 @@ func (q *Queries) GetLocalServer(ctx context.Context) (Server, error) {
 	)
 	return i, err
 }
+
+const insertLocalServerIfAbsent = `-- name: InsertLocalServerIfAbsent :exec
+INSERT INTO servers (canonical_origin, is_local)
+VALUES ($1, true)
+ON CONFLICT (is_local) WHERE is_local DO NOTHING
+`
+
+// Races between concurrent starts are settled by the servers_single_local index.
+func (q *Queries) InsertLocalServerIfAbsent(ctx context.Context, canonicalOrigin string) error {
+	_, err := q.db.Exec(ctx, insertLocalServerIfAbsent, canonicalOrigin)
+	return err
+}

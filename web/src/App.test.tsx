@@ -8,7 +8,7 @@ import { renderWithProviders } from './test/render'
 describe('App', () => {
   it('shows the product name as the page heading', async () => {
     server.use(
-      http.get('*/api/server', () => HttpResponse.json({ software: 'amethyst', version: 'dev' })),
+      http.get('*/api/server', () => HttpResponse.json({ canonical_origin: 'http://localhost:8080', software: 'amethyst', version: 'dev' })),
     )
 
     renderWithProviders(<App />)
@@ -17,6 +17,6 @@ describe('App', () => {
       screen.getByRole('heading', { level: 1, name: 'Amethyst' }),
     ).toBeInTheDocument()
     // Let the server status query settle so it doesn't outlive the test.
-    expect(await screen.findByText('Running amethyst dev')).toBeInTheDocument()
+    expect(await screen.findByText(/running amethyst dev/)).toBeInTheDocument()
   })
 })

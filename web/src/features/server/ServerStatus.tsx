@@ -17,7 +17,7 @@ export function ServerStatus() {
   }
   return (
     <p className={styles.status}>
-      Running {data.software} {data.version}
+      {data.canonical_origin} · running {data.software} {data.version}
     </p>
   )
 }

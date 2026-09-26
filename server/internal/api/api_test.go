@@ -20,9 +20,10 @@ func newTestAPI(t *testing.T, ready ReadinessCheck) http.Handler {
 		ready = func(context.Context) error { return nil }
 	}
 	h, err := NewHandler(Deps{
-		Ready:   ready,
-		Version: "v1.2.3-test",
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Ready:           ready,
+		CanonicalOrigin: "https://a.example",
+		Version:         "v1.2.3-test",
+		Logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 	})
 	if err != nil {
 		t.Fatalf("NewHandler: %v", err)
@@ -119,8 +120,8 @@ func TestServerInfo(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	info := decode[apigen.ServerInfo](t, rec)
-	if info.Software != "amethyst" || info.Version != "v1.2.3-test" {
-		t.Errorf("info = %+v, want amethyst v1.2.3-test", info)
+	if info.CanonicalOrigin != "https://a.example" || info.Software != "amethyst" || info.Version != "v1.2.3-test" {
+		t.Errorf("info = %+v, want https://a.example running amethyst v1.2.3-test", info)
 	}
 }
 

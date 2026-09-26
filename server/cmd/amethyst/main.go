@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/AbuDubu/amethyst/server/internal/api"
+	"github.com/AbuDubu/amethyst/server/internal/federation"
+	"github.com/AbuDubu/amethyst/server/internal/federation/store"
 	"github.com/AbuDubu/amethyst/server/internal/platform/config"
 	"github.com/AbuDubu/amethyst/server/internal/platform/db"
 	"github.com/AbuDubu/amethyst/server/internal/platform/httpserver"
@@ -98,16 +100,22 @@ func serve(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	// Serve anyway: readiness stays failing until an operator migrates, which
-	// is visible to probes instead of a crash loop.
+	// Recording this server's identity needs the schema, so pending migrations
+	// stop startup here with a clear message.
 	if err := migrator.CheckCurrent(ctx); err != nil {
-		logger.Warn("database schema is not current", "error", err)
+		return err
 	}
+	local, err := federation.EnsureLocalServer(ctx, store.New(pool), cfg.CanonicalOrigin)
+	if err != nil {
+		return err
+	}
+	logger.Info("local server identity", "canonical_origin", local.CanonicalOrigin, "id", local.ID)
 
 	apiHandler, err := api.NewHandler(api.Deps{
-		Ready:   db.Ready(pool, migrator),
-		Version: version,
-		Logger:  logger,
+		Ready:           db.Ready(pool, migrator),
+		CanonicalOrigin: cfg.CanonicalOrigin,
+		Version:         version,
+		Logger:          logger,
 	})
 	if err != nil {
 		return err
