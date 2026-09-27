@@ -145,7 +145,7 @@ func (w *Worker) run(ctx context.Context, j store.ClaimJobsRow) {
 	switch {
 	case err == nil:
 		rows, outcomeErr = q.CompleteJob(octx, store.CompleteJobParams{ID: j.ID, Attempts: j.Attempts})
-	case j.Attempts >= j.MaxAttempts:
+	case j.Attempts >= j.MaxAttempts || IsPermanent(err):
 		log.Error("job failed permanently", "error", err)
 		rows, outcomeErr = q.FailJob(octx, store.FailJobParams{ID: j.ID, Attempts: j.Attempts, LastError: new(truncate(err.Error()))})
 	default:
