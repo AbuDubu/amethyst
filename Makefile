@@ -6,9 +6,16 @@ COMPOSE := docker compose -f deploy/compose.yaml
 # Matches deploy/compose.yaml; development only.
 export AMETHYST_DATABASE_URL ?= postgres://amethyst:amethyst@localhost:5432/amethyst?sslmode=disable
 export AMETHYST_CANONICAL_ORIGIN ?= http://localhost:8080
+# Development mail goes to Mailpit (http://localhost:8025), never to real inboxes.
+export AMETHYST_SMTP_HOST ?= localhost
+export AMETHYST_SMTP_PORT ?= 1025
+export AMETHYST_SMTP_TLS ?= none
+export AMETHYST_MAIL_FROM ?= Amethyst <noreply@localhost>
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 # Admin connection used by tests to create a throwaway database per test.
 export AMETHYST_TEST_DATABASE_URL ?= postgres://amethyst:amethyst@localhost:5432/postgres?sslmode=disable
+# Mailpit for email integration tests (SMTP on 1025, API on 8025).
+export AMETHYST_TEST_MAILPIT_HOST ?= localhost
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'

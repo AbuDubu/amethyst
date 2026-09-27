@@ -27,6 +27,7 @@ import (
 	"github.com/AbuDubu/amethyst/server/internal/platform/db"
 	"github.com/AbuDubu/amethyst/server/internal/platform/httpserver"
 	"github.com/AbuDubu/amethyst/server/internal/platform/jobs"
+	"github.com/AbuDubu/amethyst/server/internal/platform/mail"
 )
 
 const usage = "usage: amethyst <migrate|serve|jobs|version>"
@@ -96,6 +97,10 @@ func serve(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	mailCfg, err := config.LoadMail(os.Getenv)
+	if err != nil {
+		return err
+	}
 
 	pool, err := db.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -131,8 +136,10 @@ func serve(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
-	// Job kinds are registered here as features add them (email in #11).
+	// Every job kind's handler is registered here.
 	registry := jobs.NewRegistry()
+	mail.Register(registry, mail.NewSMTP(mailCfg), logger)
+	logger.Info("outgoing mail", "smtp_host", mailCfg.Host, "smtp_port", mailCfg.Port, "tls", mailCfg.TLS)
 	worker := jobs.NewWorker(pool, registry, logger)
 	workerDone := make(chan struct{})
 	go func() {
