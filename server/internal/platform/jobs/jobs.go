@@ -21,6 +21,9 @@ import (
 	"github.com/AbuDubu/amethyst/server/internal/platform/jobs/store"
 )
 
+// DB is what Enqueue writes through: a pgx transaction (normally) or pool.
+type DB = store.DBTX
+
 // Defaults for Options fields left zero.
 const (
 	DefaultMaxAttempts = 10
@@ -67,7 +70,7 @@ type Kind[T any] struct {
 
 // Enqueue adds a job. Pass the transaction that makes the corresponding
 // change, so the job commits or rolls back with it.
-func (k Kind[T]) Enqueue(ctx context.Context, db store.DBTX, payload T) error {
+func (k Kind[T]) Enqueue(ctx context.Context, db DB, payload T) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("encode %s payload: %w", k.Name, err)
