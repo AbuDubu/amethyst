@@ -35,10 +35,11 @@ Configuration (environment variables):
 
 - `AMETHYST_DATABASE_URL` (required)
 - `AMETHYST_CANONICAL_ORIGIN` (required): the server's permanent identity, such as `https://example.org`. Plain `http` is allowed only for `localhost`. It is recorded on first start, and the server refuses to start if it later changes.
+- `AMETHYST_SMTP_HOST`, `AMETHYST_MAIL_FROM` (required by `serve`), plus `AMETHYST_SMTP_PORT`, `AMETHYST_SMTP_TLS` (`starttls` default, `tls`, or `none` for local development servers only), `AMETHYST_SMTP_USERNAME`, `AMETHYST_SMTP_PASSWORD`
 - `AMETHYST_ADDR` (default `:8080`)
 - `AMETHYST_WEB_DIR` (default `web/dist`)
 
-The Makefile supplies local values for the required variables.
+The Makefile supplies local values for the required variables, sending development mail to Mailpit. Tests use `AMETHYST_TEST_DATABASE_URL` (a throwaway database per test) and `AMETHYST_TEST_MAILPIT_HOST`, and fail if they are unset.
 
 ### Two servers
 
@@ -48,7 +49,7 @@ make smoke      # check each has its own identity and database, and can reach th
 make fed-down
 ```
 
-Each server has its own database (`amethyst_a`, `amethyst_b`) on the shared PostgreSQL. `*.localhost` names resolve to your machine in browsers and curl, with no hosts-file changes needed. Tests use `AMETHYST_TEST_DATABASE_URL` to create a throwaway database per test, and fail if it is unset.
+Each server has its own database (`amethyst_a`, `amethyst_b`) on the shared PostgreSQL. `*.localhost` names resolve to your machine in browsers and curl, with no hosts-file changes needed.
 
 ## License
 

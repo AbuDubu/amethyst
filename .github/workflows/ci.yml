@@ -30,8 +30,14 @@ jobs:
           --health-interval 2s
           --health-timeout 3s
           --health-retries 15
+      mailpit:
+        image: axllent/mailpit:v1.31
+        ports:
+          - 1025:1025
+          - 8025:8025
     env:
       AMETHYST_TEST_DATABASE_URL: postgres://amethyst:amethyst@localhost:5432/postgres?sslmode=disable
+      AMETHYST_TEST_MAILPIT_HOST: localhost
     defaults:
       run:
         working-directory: server

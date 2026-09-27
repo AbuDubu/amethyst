@@ -13,12 +13,16 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"time"
 
 	"github.com/AbuDubu/amethyst/server/internal/platform/jobs/store"
 )
+
+// DB is what Enqueue writes through: a pgx transaction (normally) or pool.
+type DB = store.DBTX
 
 // Defaults for Options fields left zero.
 const (
@@ -66,7 +70,7 @@ type Kind[T any] struct {
 
 // Enqueue adds a job. Pass the transaction that makes the corresponding
 // change, so the job commits or rolls back with it.
-func (k Kind[T]) Enqueue(ctx context.Context, db store.DBTX, payload T) error {
+func (k Kind[T]) Enqueue(ctx context.Context, db DB, payload T) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("encode %s payload: %w", k.Name, err)
@@ -111,4 +115,25 @@ func Backoff(attempt int, random func() float64) time.Duration {
 	d := float64(baseDelay) * math.Pow(2, float64(attempt-1))
 	d = min(d, float64(maxDelay))
 	return time.Duration(d * (0.75 + 0.5*random()))
+}
+
+// Permanent marks a handler error as one that retrying cannot fix, such as a
+// mail server rejecting an address that does not exist. The job fails at once
+// instead of using its remaining attempts.
+func Permanent(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &permanentError{err: err}
+}
+
+type permanentError struct{ err error }
+
+func (e *permanentError) Error() string { return e.err.Error() }
+func (e *permanentError) Unwrap() error { return e.err }
+
+// IsPermanent reports whether err was marked with Permanent.
+func IsPermanent(err error) bool {
+	var p *permanentError
+	return errors.As(err, &p)
 }

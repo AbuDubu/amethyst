@@ -391,3 +391,20 @@ func TestReadStats(t *testing.T) {
 		t.Errorf("RecentFailures = %+v, want the mailbox-full failure", s.RecentFailures)
 	}
 }
+
+func TestPermanentErrorFailsWithoutRetrying(t *testing.T) {
+	ctx := context.Background()
+	pool := dbtest.New(t)
+	r := jobs.NewRegistry()
+	jobs.Handle(r, greet, func(context.Context, greeting) error {
+		return jobs.Permanent(errors.New("550 no such mailbox"))
+	})
+
+	_ = greet.Enqueue(ctx, pool, greeting{})
+	if _, err := newWorker(pool, r).RunOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if j := onlyJob(t, pool); j.Status != "failed" || j.Attempts != 1 {
+		t.Errorf("job = %+v, want failed after 1 of %d attempts", j, jobs.DefaultMaxAttempts)
+	}
+}

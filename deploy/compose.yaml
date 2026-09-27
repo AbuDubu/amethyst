@@ -70,6 +70,10 @@ services:
       AMETHYST_DATABASE_URL: postgres://amethyst:amethyst@postgres:5432/amethyst_a?sslmode=disable
       AMETHYST_CANONICAL_ORIGIN: http://a.localhost:8081
       AMETHYST_ADDR: ":8081"
+      AMETHYST_SMTP_HOST: mailpit
+      AMETHYST_SMTP_PORT: "1025"
+      AMETHYST_SMTP_TLS: none
+      AMETHYST_MAIL_FROM: Amethyst A <noreply@a.localhost>
     depends_on:
       federation-dbs: { condition: service_completed_successfully }
 
@@ -91,6 +95,10 @@ services:
       AMETHYST_DATABASE_URL: postgres://amethyst:amethyst@postgres:5432/amethyst_b?sslmode=disable
       AMETHYST_CANONICAL_ORIGIN: http://b.localhost:8082
       AMETHYST_ADDR: ":8082"
+      AMETHYST_SMTP_HOST: mailpit
+      AMETHYST_SMTP_PORT: "1025"
+      AMETHYST_SMTP_TLS: none
+      AMETHYST_MAIL_FROM: Amethyst B <noreply@b.localhost>
     depends_on:
       federation-dbs: { condition: service_completed_successfully }
 
